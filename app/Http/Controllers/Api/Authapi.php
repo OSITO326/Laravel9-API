@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Auth;
+use Illuminate\Support\Facades\Hash;
 //use Illuminate\Support\Facades\Auth;
 
 class Authapi extends Controller
@@ -32,28 +33,44 @@ class Authapi extends Controller
       'email' => $request->email,
       'password' => bcrypt($request->password),
     ]);
-    return $this->response($user);
+    $token = $user->createToken('myapptoken')->plainTextToken;
+    $response = [
+      'user' => $user,
+      'token' => $token
+    ];
+    return response($response, 201);
   }
 
   public function login(Request $request)
   {
     $cred = $request->validate([
-      'email' => 'required|email|exists:users',
-      'password' => 'required',
+      'email' => 'required|string',
+      'password' => 'required|string'
     ]);
-    if (!Auth::attemp($cred)) {
-      return response()->json([
-        'message' => 'Unauthorized.'
+    // Check email
+    $user = User::where('email', $cred['email'])->first();
+    // Check password
+    // Check password
+    if (!$user || !Hash::check($cred['password'], $user->password)) {
+      return response([
+        'message' => 'Unauthorized'
       ], 401);
-      return $this->response(Auth::user());
     }
+
+    $token = $user->createToken('myapptoken')->plainTextToken;
+
+    $response = [
+      'user' => $user,
+      'token' => $token
+    ];
+    return response($response, 201);
   }
 
   public function logout()
   {
-    Auth::user()->tokens()->delete();
-    return response()->json([
+    auth()->user()->tokens()->delete();
+    return [
       'message' => 'You have successfully logged out and token was successfull deleted.'
-    ]);
+    ];
   }
 }
